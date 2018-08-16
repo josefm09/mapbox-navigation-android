@@ -82,6 +82,9 @@ public class ComponentNavigationActivity extends AppCompatActivity implements On
   @BindView(R.id.startNavigationFab)
   FloatingActionButton startNavigationFab;
 
+  @BindView(R.id.cancelNavigationFab)
+  FloatingActionButton cancelNavigationFab;
+
   private LocationEngine locationEngine;
   private MapboxNavigation navigation;
   private NavigationSpeechPlayer speechPlayer;
@@ -89,6 +92,12 @@ public class ComponentNavigationActivity extends AppCompatActivity implements On
   private Location lastLocation;
   private DirectionsRoute route;
   private Point destination;
+  private MapState mapState;
+
+  private enum MapState {
+    Info,
+    Navigation
+  }
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -105,6 +114,7 @@ public class ComponentNavigationActivity extends AppCompatActivity implements On
 
   @Override
   public void onMapReady(MapboxMap mapboxMap) {
+    mapState = MapState.Info;
     navigationMap = new NavigationMapboxMap(mapView, mapboxMap);
 
     // For voice instructions
@@ -119,18 +129,31 @@ public class ComponentNavigationActivity extends AppCompatActivity implements On
 
   @Override
   public void onMapLongClick(@NonNull LatLng point) {
+    // Only reverse geocode while we are not in navigation
+    if (mapState.equals(MapState.Navigation)) {
+      return;
+    }
+
     // Fetch the route with this given point
     destination = Point.fromLngLat(point.getLongitude(), point.getLatitude());
     calculateRouteWith(destination, false);
+
+    // Clear any existing markers and add new one
     navigationMap.clearMarkers();
     navigationMap.addMarker(this, destination);
+
+    // Update camera to new destination
     moveCameraToInclude(destination);
     vibrate();
   }
 
   @OnClick(R.id.startNavigationFab)
   public void onStartNavigationClick(FloatingActionButton floatingActionButton) {
+    // Transition to navigation state
+    mapState = MapState.Navigation;
+
     floatingActionButton.hide();
+    cancelNavigationFab.show();
 
     // Show the InstructionView
     TransitionManager.beginDelayedTransition(navigationLayout);
@@ -142,6 +165,24 @@ public class ComponentNavigationActivity extends AppCompatActivity implements On
 
     // Location updates will be received from ProgressChangeListener
     removeLocationEngineListener();
+  }
+
+  @OnClick(R.id.cancelNavigationFab)
+  public void onCancelNavigationClick(FloatingActionButton floatingActionButton) {
+    // Transition to info state
+    mapState = MapState.Info;
+
+    floatingActionButton.hide();
+
+    // Hide the InstructionView
+    TransitionManager.beginDelayedTransition(navigationLayout);
+    instructionView.setVisibility(View.INVISIBLE);
+
+    // Reset map camera and pitch
+    resetMapAfterNavigation();
+
+    // Add back regular location listener
+    addLocationEngineListener();
   }
 
   /*
@@ -302,11 +343,7 @@ public class ComponentNavigationActivity extends AppCompatActivity implements On
   }
 
   private void moveCameraTo(Location location) {
-    CameraPosition cameraPosition = new CameraPosition.Builder()
-      .zoom(12)
-      .target(new LatLng(location.getLatitude(), location.getLongitude()))
-      .bearing(location.getBearing())
-      .build();
+    CameraPosition cameraPosition = buildCameraPositionFrom(location, location.getBearing());
     navigationMap.retrieveMap().animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), TWO_SECONDS);
   }
 
@@ -323,6 +360,24 @@ public class ComponentNavigationActivity extends AppCompatActivity implements On
     navigationMap.retrieveMap().animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), TWO_SECONDS);
   }
 
+  private void moveCameraOverhead() {
+    if (lastLocation == null) {
+      return;
+    }
+    CameraPosition cameraPosition = buildCameraPositionFrom(lastLocation, 0d);
+    navigationMap.retrieveMap().animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), TWO_SECONDS);
+  }
+
+  @NonNull
+  private CameraPosition buildCameraPositionFrom(Location location, double bearing) {
+    return new CameraPosition.Builder()
+      .zoom(12.0)
+      .target(new LatLng(location.getLatitude(), location.getLongitude()))
+      .bearing(bearing)
+      .tilt(0d)
+      .build();
+  }
+
   private void adjustMapPaddingForNavigation() {
     Resources resources = getResources();
     int mapViewHeight = mapView.getHeight();
@@ -331,9 +386,22 @@ public class ComponentNavigationActivity extends AppCompatActivity implements On
     navigationMap.retrieveMap().setPadding(0, topPadding, 0, 0);
   }
 
+  private void resetMapAfterNavigation() {
+    navigationMap.removeRoute();
+    navigationMap.clearMarkers();
+    navigation.stopNavigation();
+    moveCameraOverhead();
+  }
+
   private void removeLocationEngineListener() {
     if (locationEngine != null) {
       locationEngine.removeLocationEngineListener(this);
+    }
+  }
+
+  private void addLocationEngineListener() {
+    if (locationEngine != null) {
+      locationEngine.addLocationEngineListener(this);
     }
   }
 
@@ -371,6 +439,7 @@ public class ComponentNavigationActivity extends AppCompatActivity implements On
     }
   }
 
+  @SuppressLint("MissingPermission")
   private void vibrate() {
     Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
