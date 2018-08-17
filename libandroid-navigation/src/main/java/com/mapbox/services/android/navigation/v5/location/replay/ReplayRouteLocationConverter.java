@@ -3,8 +3,6 @@ package com.mapbox.services.android.navigation.v5.location.replay;
 import android.location.Location;
 
 import com.mapbox.api.directions.v5.models.DirectionsRoute;
-import com.mapbox.api.directions.v5.models.LegStep;
-import com.mapbox.api.directions.v5.models.RouteLeg;
 import com.mapbox.core.constants.Constants;
 import com.mapbox.geojson.LineString;
 import com.mapbox.geojson.Point;
@@ -25,32 +23,31 @@ public class ReplayRouteLocationConverter {
   private static final double ONE_KM_IN_METERS = 1000d;
   private static final int ONE_HOUR_IN_SECONDS = 3600;
   private static final String REPLAY_ROUTE = "ReplayRouteLocation";
-  private static final int STEPS_TO_CALCULATE = 2;
   private DirectionsRoute route;
   private int speed;
   private int delay;
   private double distance;
   private int currentLeg;
   private int currentStep;
-  private int totalStepPoints;
-  private int stepPointsConverted;
+  private long time;
 
   ReplayRouteLocationConverter(DirectionsRoute route) {
+    initialize();
     update(route);
     this.speed = DEFAULT_SPEED;
     this.delay = DEFAULT_DELAY;
     this.distance = calculateDistancePerSec();
-    initialize();
   }
 
   List<Location> toLocations() {
-    if (totalStepPoints <= 0) {
-      return Collections.emptyList();
-    }
     List<Point> stepPoints = calculateStepPoints();
     List<Location> mockedLocations = calculateMockLocations(stepPoints);
 
     return mockedLocations;
+  }
+
+  void initializeTime() {
+    time = System.currentTimeMillis();
   }
 
   /**
@@ -76,7 +73,6 @@ public class ReplayRouteLocationConverter {
   List<Location> calculateMockLocations(List<Point> points) {
     List<Point> pointsToCopy = new ArrayList<>(points);
     List<Location> mockedLocations = new ArrayList<>();
-    long time = System.currentTimeMillis();
     for (Point point : points) {
       Location mockedLocation = new Location(REPLAY_ROUTE);
       mockedLocation.setLatitude(point.latitude());
@@ -102,7 +98,6 @@ public class ReplayRouteLocationConverter {
 
   private void update(DirectionsRoute route) {
     this.route = route;
-    this.totalStepPoints = calculateTotalStepPoints();
   }
 
   /**
@@ -118,47 +113,25 @@ public class ReplayRouteLocationConverter {
   private void initialize() {
     this.currentLeg = 0;
     this.currentStep = 0;
-    this.stepPointsConverted = 0;
-  }
-
-  private int calculateTotalStepPoints() {
-    int stepPoints = 0;
-    List<RouteLeg> currentRouteLegs = route.legs();
-    for (; currentRouteLegs != null && currentLeg < currentRouteLegs.size(); currentLeg++) {
-      RouteLeg currentRouteLeg = currentRouteLegs.get(currentLeg);
-      List<LegStep> currentLegSteps = currentRouteLeg.steps();
-      for (; currentLegSteps != null && currentStep < currentLegSteps.size(); currentStep++) {
-        stepPoints++;
-      }
-      currentStep = 0;
-    }
-    currentLeg = 0;
-    currentStep = 0;
-    return stepPoints;
   }
 
   private List<Point> calculateStepPoints() {
     List<Point> stepPoints = new ArrayList<>();
-    List<RouteLeg> currentRouteLegs = route.legs();
-    for (; currentRouteLegs != null && currentLeg < currentRouteLegs.size(); currentLeg++) {
-      RouteLeg currentRouteLeg = currentRouteLegs.get(currentLeg);
-      List<LegStep> currentLegSteps = currentRouteLeg.steps();
-      for (; currentLegSteps != null && currentStep < currentLegSteps.size(); currentStep++) {
-        if (stepPointsConverted > STEPS_TO_CALCULATE) {
-          break;
-        }
-        LineString line = LineString.fromPolyline(currentLegSteps.get(currentStep).geometry(), Constants.PRECISION_6);
-        stepPoints.addAll(sliceRoute(line));
-        stepPointsConverted++;
-        totalStepPoints--;
-      }
-      if (stepPointsConverted > STEPS_TO_CALCULATE) {
-        stepPointsConverted = 0;
-        break;
-      }
-      currentStep = 0;
-    }
+
+    LineString line = LineString.fromPolyline(
+      route.legs().get(currentLeg).steps().get(currentStep).geometry(), Constants.PRECISION_6);
+    stepPoints.addAll(sliceRoute(line));
+    increaseIndex();
 
     return stepPoints;
+  }
+
+  private void increaseIndex() {
+    if (currentStep < route.legs().get(currentLeg).steps().size() - 1) {
+      currentStep++;
+    } else if (currentLeg < route.legs().size() - 1) {
+      currentLeg++;
+      currentStep = 0;
+    }
   }
 }

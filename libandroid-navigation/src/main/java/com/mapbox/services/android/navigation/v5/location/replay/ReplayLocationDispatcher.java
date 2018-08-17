@@ -17,7 +17,6 @@ public class ReplayLocationDispatcher implements Runnable {
   private Location current;
   private Handler handler;
   private CopyOnWriteArraySet<ReplayLocationListener> replayLocationListeners;
-  private boolean isLastLocationDispatched;
 
   ReplayLocationDispatcher(@NonNull List<Location> locationsToReplay) {
     checkValidInput(locationsToReplay);
@@ -38,16 +37,13 @@ public class ReplayLocationDispatcher implements Runnable {
 
   @Override
   public void run() {
-    if (!isLastLocationDispatched) {
-      dispatchLocation(current);
-      scheduleNextDispatch();
-    }
+    dispatchLocation(current);
+    scheduleNextDispatch();
   }
 
   void stop() {
     clearLocations();
     stopDispatching();
-    lastLocationDispatched();
   }
 
   void pause() {
@@ -61,7 +57,12 @@ public class ReplayLocationDispatcher implements Runnable {
   }
 
   void add(@NonNull List<Location> toReplay) {
+    boolean shouldRedispatch = locationsToReplay.isEmpty();
     addLocations(toReplay);
+    if (shouldRedispatch) {
+      stopDispatching();
+      scheduleNextDispatch();
+    }
   }
 
   void addReplayLocationListener(ReplayLocationListener listener) {
@@ -81,7 +82,6 @@ public class ReplayLocationDispatcher implements Runnable {
 
   private void initialize() {
     current = locationsToReplay.remove(HEAD);
-    isLastLocationDispatched = false;
   }
 
   private void addLocations(List<Location> toReplay) {
@@ -101,9 +101,6 @@ public class ReplayLocationDispatcher implements Runnable {
       long nextTime = current.getTime();
       long diff = nextTime - currentTime;
       handler.postDelayed(this, diff);
-    } else {
-      stopDispatching();
-      lastLocationDispatched();
     }
   }
 
@@ -113,9 +110,5 @@ public class ReplayLocationDispatcher implements Runnable {
 
   private void stopDispatching() {
     handler.removeCallbacks(this);
-  }
-
-  private void lastLocationDispatched() {
-    isLastLocationDispatched = true;
   }
 }

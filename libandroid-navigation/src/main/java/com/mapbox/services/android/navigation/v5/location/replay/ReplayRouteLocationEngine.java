@@ -30,7 +30,9 @@ public class ReplayRouteLocationEngine extends LocationEngine implements Runnabl
         listener.onLocationChanged(location);
       }
       lastLocation = location;
-      mockedLocations.remove(HEAD);
+      if (!mockedLocations.isEmpty()) {
+        mockedLocations.remove(HEAD);
+      }
     }
   };
 
@@ -42,6 +44,7 @@ public class ReplayRouteLocationEngine extends LocationEngine implements Runnabl
   public void assign(DirectionsRoute route) {
     handler.removeCallbacks(this);
     converter = new ReplayRouteLocationConverter(route);
+    converter.initializeTime();
     mockedLocations = converter.toLocations();
     dispatcher = obtainDispatcher();
     dispatcher.run();
@@ -79,18 +82,14 @@ public class ReplayRouteLocationEngine extends LocationEngine implements Runnabl
 
   @Override
   public void run() {
-    if (mockedLocations.isEmpty()) {
-      handler.removeCallbacks(this);
+    List<Location> nextMockedLocations = converter.toLocations();
+    dispatcher.add(nextMockedLocations);
+    mockedLocations.addAll(nextMockedLocations);
+    int currentMockedPoints = mockedLocations.size();
+    if (currentMockedPoints <= 5) {
+      handler.postDelayed(this, 1000);
     } else {
-      List<Location> nextMockedLocations = converter.toLocations();
-      dispatcher.add(nextMockedLocations);
-      mockedLocations.addAll(nextMockedLocations);
-      int currentMockedPoints = mockedLocations.size();
-      if (currentMockedPoints <= 5) {
-        handler.postDelayed(this, 1000);
-      } else {
-        handler.postDelayed(this, (currentMockedPoints - 5) * 1000);
-      }
+      handler.postDelayed(this, (currentMockedPoints - 5) * 1000);
     }
   }
 
