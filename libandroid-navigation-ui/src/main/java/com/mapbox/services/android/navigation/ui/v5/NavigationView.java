@@ -517,7 +517,14 @@ public class NavigationView extends CoordinatorLayout implements LifecycleObserv
 
   private void initializeClickListeners() {
     cancelBtn.setOnClickListener(new CancelBtnClickListener(navigationViewEventDispatcher));
-    recenterBtn.setOnClickListener(new RecenterBtnClickListener(navigationPresenter));
+//    recenterBtn.setOnClickListener(new RecenterBtnClickListener(navigationPresenter));
+    recenterBtn.setOnClickListener(new OnClickListener() {
+      @Override
+      public void onClick(View v) {
+        boolean isVisible = !navigationMap.trafficVisible();
+        navigationMap.updateTrafficVisiblity(isVisible);
+      }
+    });
     routeOverviewBtn.setOnClickListener(new RouteOverviewBtnClickListener(navigationPresenter));
   }
 
