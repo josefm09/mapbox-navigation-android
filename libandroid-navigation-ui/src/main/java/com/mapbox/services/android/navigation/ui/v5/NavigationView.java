@@ -29,6 +29,7 @@ import com.mapbox.services.android.navigation.ui.v5.map.NavigationMapboxMap;
 import com.mapbox.services.android.navigation.ui.v5.summary.SummaryBottomSheet;
 import com.mapbox.services.android.navigation.v5.location.MockLocationEngine;
 import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigation;
+import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigationOptions;
 import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
 import com.mapbox.services.android.navigation.v5.navigation.NavigationTimeFormat;
 import com.mapbox.services.android.navigation.v5.utils.LocaleUtils;
@@ -528,9 +529,17 @@ public class NavigationView extends CoordinatorLayout implements LifecycleObserv
 
   private void establish(NavigationViewOptions options) {
     LocaleUtils localeUtils = new LocaleUtils();
+
+    setRoundingIncrement(options);
     establishLanguage(localeUtils, options);
     establishUnitType(localeUtils, options);
     establishTimeFormat(options);
+  }
+
+  private void setRoundingIncrement(NavigationViewOptions navigationViewOptions) {
+    MapboxNavigationOptions mapboxNavigationOptions = navigationViewOptions.navigationOptions();
+    instructionView.setRoundingIncrement(mapboxNavigationOptions.roundingIncrement());
+    summaryBottomSheet.setRoundingIncrement(mapboxNavigationOptions.roundingIncrement());
   }
 
   private void establishLanguage(LocaleUtils localeUtils, NavigationViewOptions options) {

@@ -86,8 +86,10 @@ class MapboxNavigationNotification implements NavigationNotification {
   private void initialize(Context context, MapboxNavigation mapboxNavigation) {
     this.mapboxNavigation = mapboxNavigation;
     etaFormat = context.getString(R.string.eta_format);
+    MapboxNavigationOptions mapboxNavigationOptions = mapboxNavigation.options();
     RouteOptions routeOptions = mapboxNavigation.getRoute().routeOptions();
-    distanceFormatter = new DistanceFormatter(context, routeOptions.language(), routeOptions.voiceUnits());
+    distanceFormatter = new DistanceFormatter(context, routeOptions.language(), routeOptions.voiceUnits(),
+      mapboxNavigationOptions.roundingIncrement());
     notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
     isTwentyFourHourFormat = DateFormat.is24HourFormat(context);
     createNotificationChannel(context);

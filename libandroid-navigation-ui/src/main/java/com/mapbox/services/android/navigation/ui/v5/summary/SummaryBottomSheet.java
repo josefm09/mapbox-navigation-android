@@ -17,6 +17,7 @@ import com.mapbox.api.directions.v5.DirectionsCriteria;
 import com.mapbox.services.android.navigation.ui.v5.NavigationViewModel;
 import com.mapbox.services.android.navigation.ui.v5.R;
 import com.mapbox.services.android.navigation.ui.v5.ThemeSwitcher;
+import com.mapbox.services.android.navigation.v5.navigation.NavigationConstants;
 import com.mapbox.services.android.navigation.v5.navigation.NavigationTimeFormat;
 import com.mapbox.services.android.navigation.v5.routeprogress.ProgressChangeListener;
 import com.mapbox.services.android.navigation.v5.routeprogress.RouteProgress;
@@ -46,6 +47,8 @@ public class SummaryBottomSheet extends FrameLayout {
   private String unitType;
   @NavigationTimeFormat.Type
   private int timeFormatType;
+  @NavigationConstants.RoundingIncrement
+  private int roundingIncrement;
 
   public SummaryBottomSheet(Context context) {
     this(context, null);
@@ -107,7 +110,8 @@ public class SummaryBottomSheet extends FrameLayout {
   @SuppressWarnings("UnusedDeclaration")
   public void update(RouteProgress routeProgress) {
     if (routeProgress != null && !isRerouting) {
-      SummaryModel model = new SummaryModel(getContext(), routeProgress, language, unitType, timeFormatType);
+      SummaryModel model = new SummaryModel(
+        getContext(), routeProgress, language, unitType, timeFormatType, roundingIncrement);
       arrivalTimeText.setText(model.getArrivalTime());
       timeRemainingText.setText(model.getTimeRemaining());
       distanceRemainingText.setText(model.getDistanceRemaining());
@@ -161,6 +165,10 @@ public class SummaryBottomSheet extends FrameLayout {
    */
   public void setTimeFormat(@NavigationTimeFormat.Type int type) {
     this.timeFormatType = type;
+  }
+
+  public void setRoundingIncrement(@NavigationConstants.RoundingIncrement int roundingIncrement) {
+    this.roundingIncrement = roundingIncrement;
   }
 
   /**

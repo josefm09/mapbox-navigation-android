@@ -111,6 +111,9 @@ public class InstructionView extends RelativeLayout implements FeedbackBottomShe
   private DistanceFormatter distanceFormatter;
   private String language = "";
   private String unitType = "";
+
+  @NavigationConstants.RoundingIncrement
+  private int roundingIncrement;
   private boolean isMuted;
   private boolean isRerouting;
 
@@ -227,7 +230,7 @@ public class InstructionView extends RelativeLayout implements FeedbackBottomShe
   @SuppressWarnings("UnusedDeclaration")
   public void update(RouteProgress routeProgress) {
     if (routeProgress != null && !isRerouting) {
-      InstructionModel model = new InstructionModel(getContext(), routeProgress, language, unitType);
+      InstructionModel model = new InstructionModel(getContext(), routeProgress, language, unitType, roundingIncrement);
       updateDataFromInstruction(model);
       updateDataFromBannerInstruction(model);
     }
@@ -361,6 +364,10 @@ public class InstructionView extends RelativeLayout implements FeedbackBottomShe
     checkForDistanceFormatterUpdate();
   }
 
+  public void setRoundingIncrement(@NavigationConstants.RoundingIncrement int roundingIncrement) {
+    this.roundingIncrement = roundingIncrement;
+  }
+
   /**
    * Inflates this layout needed for this view and initializes the locale as the device locale.
    */
@@ -368,7 +375,7 @@ public class InstructionView extends RelativeLayout implements FeedbackBottomShe
     LocaleUtils localeUtils = new LocaleUtils();
     language = localeUtils.inferDeviceLanguage(getContext());
     unitType = localeUtils.getUnitTypeForDeviceLocale(getContext());
-    distanceFormatter = new DistanceFormatter(getContext(), language, unitType);
+    distanceFormatter = new DistanceFormatter(getContext(), language, unitType, roundingIncrement);
     inflate(getContext(), R.layout.instruction_view_layout, this);
   }
 
@@ -915,7 +922,7 @@ public class InstructionView extends RelativeLayout implements FeedbackBottomShe
 
   private void checkForDistanceFormatterUpdate() {
     if (distanceFormatter.shouldUpdate(language, unitType)) {
-      distanceFormatter = new DistanceFormatter(getContext(), language, unitType);
+      distanceFormatter = new DistanceFormatter(getContext(), language, unitType, roundingIncrement);
       instructionListAdapter.updateDistanceFormatter(distanceFormatter);
     }
   }

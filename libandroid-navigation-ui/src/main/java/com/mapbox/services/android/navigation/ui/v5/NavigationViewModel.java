@@ -34,6 +34,7 @@ import com.mapbox.services.android.navigation.v5.milestone.MilestoneEventListene
 import com.mapbox.services.android.navigation.v5.milestone.VoiceInstructionMilestone;
 import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigation;
 import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigationOptions;
+import com.mapbox.services.android.navigation.v5.navigation.NavigationConstants;
 import com.mapbox.services.android.navigation.v5.navigation.NavigationEventListener;
 import com.mapbox.services.android.navigation.v5.navigation.NavigationTimeFormat;
 import com.mapbox.services.android.navigation.v5.navigation.camera.Camera;
@@ -77,6 +78,8 @@ public class NavigationViewModel extends AndroidViewModel {
   private boolean isRunning;
   private RouteUtils routeUtils;
   private String accessToken;
+  @NavigationConstants.RoundingIncrement
+  private int roundingIncrement;
 
   public NavigationViewModel(Application application) {
     super(application);
@@ -173,6 +176,7 @@ public class NavigationViewModel extends AndroidViewModel {
     initLanguage(options);
     initUnitType(options);
     initTimeFormat(navigationOptions);
+    initRoundingIncrement(navigationOptions);
     initVoiceInstructions(options);
     if (!isRunning) {
       locationEngineConductor.initializeLocationEngine(getApplication(), options.shouldSimulateRoute());
@@ -226,6 +230,10 @@ public class NavigationViewModel extends AndroidViewModel {
     timeFormatType = options.timeFormatType();
   }
 
+  private void initRoundingIncrement(MapboxNavigationOptions options) {
+    this.roundingIncrement = options.roundingIncrement();
+  }
+
   private void initVoiceInstructions(NavigationViewOptions options) {
     boolean isVoiceLanguageSupported = options.directionsRoute().voiceLanguage() != null;
     SpeechPlayerProvider speechPlayerProvider = initializeSpeechPlayerProvider(isVoiceLanguageSupported);
@@ -262,8 +270,10 @@ public class NavigationViewModel extends AndroidViewModel {
     @Override
     public void onProgressChange(Location location, RouteProgress routeProgress) {
       NavigationViewModel.this.routeProgress = routeProgress;
-      instructionModel.setValue(new InstructionModel(getApplication(), routeProgress, language, unitType));
-      summaryModel.setValue(new SummaryModel(getApplication(), routeProgress, language, unitType, timeFormatType));
+      instructionModel.setValue(
+        new InstructionModel(getApplication(), routeProgress, language, unitType,roundingIncrement));
+      summaryModel.setValue(
+        new SummaryModel(getApplication(), routeProgress, language, unitType, timeFormatType, roundingIncrement));
       navigationLocation.setValue(location);
     }
   };
@@ -389,7 +399,7 @@ public class NavigationViewModel extends AndroidViewModel {
       instructions = retrieveInstructionsFromBannerEvent(instructions);
       if (instructions != null) {
         BannerInstructionModel model = new BannerInstructionModel(getApplication(), instructions,
-          routeProgress, language, unitType);
+          routeProgress, language, unitType, roundingIncrement);
         bannerInstructionModel.setValue(model);
       }
     }
